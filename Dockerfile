@@ -3,9 +3,9 @@ FROM golang:1.9 as builder
 WORKDIR /go/src/github.com/yacut/kubernetes-rbac-synchroniser
 COPY . .
 RUN go get -u github.com/prometheus/client_golang/prometheus/promhttp; \
-	make test; make build;
+	CGO_ENABLED=0 GOOS=linux go build -o build/kubernetes-rbac-synchroniser;
 
 # final image
-FROM alpine:latest
+FROM scratch
 COPY --from=builder /go/src/github.com/yacut/kubernetes-rbac-synchroniser/build/kubernetes-rbac-synchroniser /bin/kubernetes-rbac-synchroniser
 ENTRYPOINT ["/bin/kubernetes-rbac-synchroniser"]

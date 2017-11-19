@@ -20,7 +20,7 @@ docker.build:
 	@echo ">> building docker image"
 	@docker build -t "$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)" -t "$(DOCKER_IMAGE_NAME):latest" .
 
-build.push: docker.build
+build.push:
 	@docker push "$(DOCKER_IMAGE_NAME)"
 
 clean:
