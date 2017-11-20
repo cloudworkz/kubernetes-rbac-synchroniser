@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,10 +24,6 @@ import (
 	groupssettings "google.golang.org/api/groupssettings/v1"
 )
 
-var address = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
-var clusterRoleName = flag.String("cluster-role-name", "developer", "The cluster role name with permissions.")
-var roleName = flag.String("role-name", "developer", "The role binding name per namespace.")
-var groupList = flag.String("group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
 var (
 	roleUpdates = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -44,16 +41,43 @@ var (
 		[]string{"count"},
 	)
 )
+var address string
+var clusterRoleName string
+var roleName string
+var groupList string
 
 func main() {
+	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
+	flag.StringVar(&clusterRoleName, "cluster-role-name", "developer", "The cluster role name with permissions.")
+	flag.StringVar(&roleName, "role-name", "developer", "The role binding name per namespace.")
+	flag.StringVar(&groupList, "group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
 	flag.Parse()
+
+	if clusterRoleName == "" {
+		log.Println("Missing cluster-role-name")
+		log.Println()
+		flag.Usage()
+		os.Exit(1)
+	}
+	if roleName == "" {
+		log.Println("Missing role-name")
+		log.Println()
+		flag.Usage()
+		os.Exit(1)
+	}
+	if groupList == "" {
+		log.Println("Missing groupList")
+		log.Println()
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	stopChan := make(chan struct{}, 1)
 
 	go serveMetrics(address)
 	go handleSigterm(stopChan)
 	for {
-		go updateRoles()
+		//go updateRoles()
 		time.Sleep(time.Second * 30)
 	}
 }
@@ -66,7 +90,7 @@ func handleSigterm(stopChan chan struct{}) {
 	close(stopChan)
 }
 
-func serveMetrics(address *string) {
+func serveMetrics(address string) {
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
@@ -76,8 +100,8 @@ func serveMetrics(address *string) {
 	prometheus.MustRegister(roleUpdateErrors)
 	http.Handle("/metrics", promhttp.Handler())
 
-	log.Printf("Server listing %v\n", *address)
-	log.Fatal(http.ListenAndServe(*address, nil))
+	log.Printf("Server listing %v\n", address)
+	log.Fatal(http.ListenAndServe(address, nil))
 }
 
 func updateRoles() {
@@ -100,20 +124,22 @@ func updateRoles() {
 	if err != nil {
 		log.Fatalf("Unable to retrieve Group Settings Client %v", err)
 	}
-	log.Println(groupList)
+	groupListArray := strings.Split(groupList, ",")
+	for _, element := range groupListArray {
+		elementArray := strings.Split(element, ":")
+		namespace, email := elementArray[0], elementArray[1]
 
-	var email string
-	_, err = fmt.Scanf("%s", &email)
-	if err != nil {
-		log.Fatalf("Could not read email. %v", err)
-	}
-	r, err := srv.Groups.Get(email).Do()
-	if err != nil {
-		log.Fatalf("Unable to retrieve group settings. %v", err)
-	}
+		if namespace == "" || email == "" {
+			log.Fatalf("Could not update group. Namespace or/and email are empty: %v %v", namespace, email)
+		}
+		r, err := srv.Groups.Get(email).Do()
+		if err != nil {
+			log.Fatalf("Unable to retrieve group settings. %v", err)
+		}
 
-	// Print group settings.
-	fmt.Printf("%s - %s", r.Email, r.Description)
+		// Print group settings.
+		fmt.Printf("%s - %s", r.Email, r.Description)
+	}
 
 }
 
