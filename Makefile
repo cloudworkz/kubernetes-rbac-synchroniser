@@ -12,6 +12,11 @@ format:
 	@echo ">> formatting code"
 	@$(GO) fmt $(pkgs)
 
+deps:
+	@echo ">> installing dependencies"
+	@go get -u k8s.io/client-go/...
+	@go get -u github.com/prometheus/client_golang/...
+
 build:
 	@echo ">> building binaries"
 	@$(GO) build -o build/$(BINARY)

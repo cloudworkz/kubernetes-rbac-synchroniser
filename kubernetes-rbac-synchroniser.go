@@ -22,6 +22,12 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	groupssettings "google.golang.org/api/groupssettings/v1"
+	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 )
 
 var (
@@ -45,12 +51,18 @@ var address string
 var clusterRoleName string
 var roleName string
 var groupList string
+var kubeconfig *string
 
 func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
 	flag.StringVar(&clusterRoleName, "cluster-role-name", "developer", "The cluster role name with permissions.")
 	flag.StringVar(&roleName, "role-name", "developer", "The role binding name per namespace.")
 	flag.StringVar(&groupList, "group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
+	if home := homedir.HomeDir(); home != "" {
+		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	} else {
+		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	}
 	flag.Parse()
 
 	if clusterRoleName == "" {
@@ -71,13 +83,17 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		panic(err)
+	}
 
 	stopChan := make(chan struct{}, 1)
 
 	go serveMetrics(address)
 	go handleSigterm(stopChan)
 	for {
-		//go updateRoles()
+		go updateRoles(config)
 		time.Sleep(time.Second * 30)
 	}
 }
@@ -104,7 +120,7 @@ func serveMetrics(address string) {
 	log.Fatal(http.ListenAndServe(address, nil))
 }
 
-func updateRoles() {
+func updateRoles(kubeconfig *rest.Config) {
 	ctx := context.Background()
 
 	b, err := ioutil.ReadFile("client_secret.json")
@@ -139,6 +155,23 @@ func updateRoles() {
 
 		// Print group settings.
 		fmt.Printf("%s - %s", r.Email, r.Description)
+		clientset, err := kubernetes.NewForConfig(kubeconfig)
+		if err != nil {
+			panic(err)
+		}
+
+		roleBinding := &rbacv1beta1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: roleName,
+			},
+		}
+
+		roleClient := clientset.RbacV1beta1().RoleBindings(namespace)
+		result, err := roleClient.Update(roleBinding)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Updated %q.\n", result.GetObjectMeta().GetName())
 	}
 
 }
