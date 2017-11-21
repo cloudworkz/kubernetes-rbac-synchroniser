@@ -62,6 +62,9 @@ spec:
   template:
     metadata:
       name: kubernetes-rbac-synchroniser
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
       labels:
         app: kubernetes-rbac-synchroniser
     spec:
