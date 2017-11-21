@@ -222,10 +222,10 @@ func updateRoles() {
 		updateResult, updateError := roleClient.Update(roleBinding)
 		if updateError != nil {
 			roleUpdateErrors.WithLabelValues("role-update").Inc()
-			log.Fatalf("Unable to update role. %v", updateError)
+			log.Fatalf("Unable to update %q rolebinding. %v", roleName, updateError)
 			return
 		}
-		log.Printf("Updated %q.\n", updateResult.GetObjectMeta().GetName())
+		log.Printf("Updated %q rolebinding in %q namespace.\n", updateResult.GetObjectMeta().GetName(), namespace)
 		roleUpdates.WithLabelValues("role-update").Inc()
 	}
 }
