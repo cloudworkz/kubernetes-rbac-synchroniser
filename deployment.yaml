@@ -26,6 +26,8 @@ rules:
   - clusterrolebindings
   - clusterroles
   verbs: ["*"]
+  resourceNames:
+  - sync-test
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1

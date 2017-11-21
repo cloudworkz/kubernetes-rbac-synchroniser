@@ -66,7 +66,7 @@ func main() {
 	flag.StringVar(&tokenFilePath, "token-file-path", "", "The file with google group setting file.")
 	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Absolute path to the kubeconfig file.")
-	flag.DurationVar(&updateInterval, "update-interval", 60000, "Update interval in seconds.")
+	flag.DurationVar(&updateInterval, "update-interval", 60000, "Update interval in seconds. e.g. 30s or 5m")
 	flag.Parse()
 
 	if clusterRoleName == "" {
@@ -94,7 +94,7 @@ func main() {
 	go handleSigterm(stopChan)
 	for {
 		updateRoles()
-		time.Sleep(time.Second * updateInterval)
+		time.Sleep(updateInterval)
 	}
 }
 
