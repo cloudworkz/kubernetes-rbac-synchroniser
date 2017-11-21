@@ -55,22 +55,22 @@ subjects:
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: kubernetes-rbac-synchroniser
+  name: rbac-synchroniser
   namespace: kube-system
 spec:
   replicas: 1
   template:
     metadata:
-      name: kubernetes-rbac-synchroniser
+      name: rbac-synchroniser
       annotations:
         prometheus.io/scrape: 'true'
         prometheus.io/port: '8080'
       labels:
-        app: kubernetes-rbac-synchroniser
+        app: rbac-synchroniser
     spec:
       serviceAccountName: rbac-synchroniser-account
       containers:
-      - name: kubernetes-rbac-synchroniser
+      - name: rbac-synchroniser
         image: quay.io/yacut/kubernetes-rbac-synchroniser
         imagePullPolicy: Always
         args:
