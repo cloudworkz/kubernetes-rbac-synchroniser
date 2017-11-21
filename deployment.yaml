@@ -64,7 +64,7 @@ spec:
         image: quay.io/yacut/kubernetes-rbac-synchroniser
         imagePullPolicy: Always
         args:
-        - '-update-interval=60'
+        - '-update-interval=60s'
         - '-cluster-role-name=sync-test'
         - '-role-name=sync-test'
         - '-fake-group-response'
