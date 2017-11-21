@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -21,7 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	groupssettings "google.golang.org/api/groupssettings/v1"
+	"google.golang.org/api/admin/directory/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -52,12 +51,16 @@ var clusterRoleName string
 var roleName string
 var groupList string
 var kubeconfig *string
+var token string
+var tokenFilePath string
 
 func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
 	flag.StringVar(&clusterRoleName, "cluster-role-name", "developer", "The cluster role name with permissions.")
 	flag.StringVar(&roleName, "role-name", "developer", "The role binding name per namespace.")
 	flag.StringVar(&groupList, "group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
+	flag.StringVar(&token, "token", "", "The google group setting API token.")
+	flag.StringVar(&tokenFilePath, "token-file-path", "", "The file with google group setting file.")
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
@@ -128,15 +131,13 @@ func updateRoles(kubeconfig *rest.Config) {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
-	// If modifying these scopes, delete your previously saved credentials
-	// at ~/.credentials/groupssettings-go-quickstart.json
-	config, err := google.ConfigFromJSON(b, groupssettings.AppsGroupsSettingsScope)
+	config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupReadonlyScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
 	client := getClient(ctx, config)
 
-	srv, err := groupssettings.New(client)
+	srv, err := admin.New(client)
 	if err != nil {
 		log.Fatalf("Unable to retrieve Group Settings Client %v", err)
 	}
@@ -148,13 +149,15 @@ func updateRoles(kubeconfig *rest.Config) {
 		if namespace == "" || email == "" {
 			log.Fatalf("Could not update group. Namespace or/and email are empty: %v %v", namespace, email)
 		}
+		log.Printf("email %q.\n", email)
 		r, err := srv.Groups.Get(email).Do()
 		if err != nil {
 			log.Fatalf("Unable to retrieve group settings. %v", err)
 		}
 
+		log.Printf("GROUPS %q.\n", r)
 		// Print group settings.
-		fmt.Printf("%s - %s", r.Email, r.Description)
+		log.Printf("%s - %s", r.Email, r.Description)
 		clientset, err := kubernetes.NewForConfig(kubeconfig)
 		if err != nil {
 			panic(err)
@@ -171,7 +174,7 @@ func updateRoles(kubeconfig *rest.Config) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("Updated %q.\n", result.GetObjectMeta().GetName())
+		log.Printf("Updated %q.\n", result.GetObjectMeta().GetName())
 	}
 
 }
@@ -179,14 +182,18 @@ func updateRoles(kubeconfig *rest.Config) {
 // getClient uses a Context and Config to retrieve a Token
 // then generate a Client. It returns the generated Client.
 func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
-	cacheFile, err := tokenCacheFile()
-	if err != nil {
-		log.Fatalf("Unable to get path to cached credential file. %v", err)
+	if tokenFilePath == "" {
+		cacheFile := tokenCacheFile()
+		if cacheFile == "" {
+			log.Fatalf("Unable to get path to cached credential file.")
+		}
+		tokenFilePath = cacheFile
 	}
-	tok, err := tokenFromFile(cacheFile)
+
+	tok, err := tokenFromFile(tokenFilePath)
 	if err != nil {
 		tok = getTokenFromWeb(config)
-		saveToken(cacheFile, tok)
+		saveToken(tokenFilePath, tok)
 	}
 	return config.Client(ctx, tok)
 }
@@ -194,16 +201,13 @@ func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
 // getTokenFromWeb uses Config to request a Token.
 // It returns the retrieved Token.
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
-	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Printf("Go to the following link in your browser then type the "+
-		"authorization code: \n%v\n", authURL)
-
-	var code string
-	if _, err := fmt.Scan(&code); err != nil {
-		log.Fatalf("Unable to read authorization code %v", err)
+	if token == "" {
+		authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+		log.Fatalf("Unable to generate oauth2 token. Go to the following link in your browser "+
+			"then use '-token' flag for the authorization code: \n%v\n", authURL)
 	}
 
-	tok, err := config.Exchange(oauth2.NoContext, code)
+	tok, err := config.Exchange(oauth2.NoContext, token)
 	if err != nil {
 		log.Fatalf("Unable to retrieve token from web %v", err)
 	}
@@ -212,15 +216,13 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 // tokenCacheFile generates credential file path/filename.
 // It returns the generated credential path/filename.
-func tokenCacheFile() (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
+func tokenCacheFile() string {
+	if tokenFilePath == "" {
+		tokenFilePath = filepath.Join(".", ".credentials")
 	}
-	tokenCacheDir := filepath.Join(usr.HomeDir, ".credentials")
-	os.MkdirAll(tokenCacheDir, 0700)
-	return filepath.Join(tokenCacheDir,
-		url.QueryEscape("groupssettings-go-quickstart.json")), err
+	os.MkdirAll(tokenFilePath, 0700)
+	return filepath.Join(tokenFilePath,
+		url.QueryEscape("kubernetes-rbac-synchroniser.json"))
 }
 
 // tokenFromFile retrieves a Token from a given file path.

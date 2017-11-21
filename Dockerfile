@@ -2,7 +2,7 @@
 FROM golang:1.9 as builder
 WORKDIR /go/src/github.com/yacut/kubernetes-rbac-synchroniser
 COPY . .
-RUN go get -u github.com/prometheus/client_golang/prometheus/promhttp; \
+RUN make install; \
 	CGO_ENABLED=0 GOOS=linux go build -o build/kubernetes-rbac-synchroniser;
 
 # final image
