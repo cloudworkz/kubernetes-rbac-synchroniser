@@ -1,4 +1,5 @@
 # kubernetes-rbac-synchroniser
+[![Docker Repository on Quay](https://quay.io/repository/yacut/kubernetes-rbac-synchroniser/status "Docker Repository on Quay")](https://quay.io/repository/yacut/kubernetes-rbac-synchroniser)
 
 ## Preparation
 
