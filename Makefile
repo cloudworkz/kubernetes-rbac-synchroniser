@@ -33,4 +33,4 @@ build.push:
 
 clean:
 	@rm -rf build
-	@rm .credentials/*
+	@rm .credentials/kubernetes-rbac-synchroniser.json

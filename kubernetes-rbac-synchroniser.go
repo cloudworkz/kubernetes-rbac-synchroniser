@@ -53,7 +53,7 @@ var fakeGroupResponse bool
 var kubeConfig string
 var inClusterConfig bool
 var token string
-var tokenFilePath string
+var credentialsFilePath string
 var updateInterval time.Duration
 
 func main() {
@@ -63,7 +63,7 @@ func main() {
 	flag.StringVar(&groupList, "group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
 	flag.BoolVar(&fakeGroupResponse, "fake-group-response", false, "Fake Google Admin API Response.")
 	flag.StringVar(&token, "token", "", "The google group setting API token.")
-	flag.StringVar(&tokenFilePath, "token-file-path", "", "The file with google group setting file.")
+	flag.StringVar(&credentialsFilePath, "credentials-file-path", "", "The file with google group setting file.")
 	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Absolute path to the kubeconfig file.")
 	flag.DurationVar(&updateInterval, "update-interval", 60000, "Update interval in seconds. e.g. 30s or 5m")
@@ -132,7 +132,7 @@ func updateRoles() {
 			return
 		}
 
-		config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupMemberReadonlyScope)
+		config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupMemberReadonlyScope, admin.AdminDirectoryGroupReadonlyScope, admin.AdminDirectoryUserReadonlyScope)
 		if err != nil {
 			roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
 			log.Fatalf("Unable to parse client secret file to config: %v", err)
@@ -233,18 +233,18 @@ func updateRoles() {
 }
 
 func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
-	if tokenFilePath == "" {
+	if credentialsFilePath == "" {
 		cacheFile := tokenCacheFile()
 		if cacheFile == "" {
 			log.Fatalf("Unable to get path to cached credential file.")
 		}
-		tokenFilePath = cacheFile
+		credentialsFilePath = cacheFile
 	}
 
-	tok, err := tokenFromFile(tokenFilePath)
+	tok, err := tokenFromFile(credentialsFilePath)
 	if err != nil {
 		tok = getTokenFromWeb(config)
-		saveToken(tokenFilePath, tok)
+		saveToken(credentialsFilePath, tok)
 	}
 	return config.Client(ctx, tok)
 }
@@ -264,11 +264,11 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 }
 
 func tokenCacheFile() string {
-	if tokenFilePath == "" {
-		tokenFilePath = filepath.Join(".", ".credentials")
+	if credentialsFilePath == "" {
+		credentialsFilePath = filepath.Join(".", ".credentials")
 	}
-	os.MkdirAll(tokenFilePath, 0700)
-	return filepath.Join(tokenFilePath,
+	os.MkdirAll(credentialsFilePath, 0700)
+	return filepath.Join(credentialsFilePath,
 		url.QueryEscape("kubernetes-rbac-synchroniser.json"))
 }
 

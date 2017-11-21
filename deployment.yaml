@@ -71,6 +71,7 @@ spec:
         - '-role-name=sync-test'
         - '-fake-group-response'
         - '-group-list=default:sync-fake@test.com'
+        # - '-credentials-file-path=/secrets/credentials.json'
         livenessProbe:
           httpGet:
             path: /healthz
@@ -82,3 +83,14 @@ spec:
             limits:
                 cpu: 0.1
                 memory: 100Mi
+      #   volumeMounts:
+      #     - name: google-admin-api-credentials
+      #       mountPath: /secrets
+      #       readOnly: true
+      # volumes:
+      #   - name: google-admin-api-credentials
+      #     secret:
+      #       secretName: google-admin-api-credentials
+      #       items:
+      #         - key: credentials.json
+      #           path: credentials.json
