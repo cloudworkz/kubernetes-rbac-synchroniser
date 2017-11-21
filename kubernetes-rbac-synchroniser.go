@@ -57,7 +57,7 @@ var tokenFilePath string
 
 func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
-	flag.StringVar(&clusterRoleName, "cluster-role-name", "developer", "The cluster role name with permissions.")
+	flag.StringVar(&clusterRoleName, "cluster-role-name", "view", "The cluster role name with permissions.")
 	flag.StringVar(&roleName, "role-name", "developer", "The role binding name per namespace.")
 	flag.StringVar(&groupList, "group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
 	flag.BoolVar(&fakeGroupResponse, "fake-group-response", false, "Fake Google Admin API Response.")
