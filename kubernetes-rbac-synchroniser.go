@@ -127,12 +127,14 @@ func updateRoles() {
 		if err != nil {
 			roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
 			log.Fatalf("Unable to read client secret file: %v", err)
+			return
 		}
 
 		config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupMemberReadonlyScope)
 		if err != nil {
 			roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
 			log.Fatalf("Unable to parse client secret file to config: %v", err)
+			return
 		}
 		client := getClient(ctx, config)
 
@@ -140,6 +142,7 @@ func updateRoles() {
 		if err != nil {
 			roleUpdateErrors.WithLabelValues("get-admin-client").Inc()
 			log.Fatalf("Unable to retrieve Group Settings Client %v", err)
+			return
 		}
 		service = srv
 	}
@@ -150,6 +153,7 @@ func updateRoles() {
 
 		if namespace == "" || email == "" {
 			log.Fatalf("Could not update group. Namespace or/and email are empty: %v %v", namespace, email)
+			return
 		}
 		//log.Printf("email %q.\n", email)
 		//log.Printf("srv %q.\n", srv)
@@ -166,6 +170,7 @@ func updateRoles() {
 			if err != nil {
 				roleUpdateErrors.WithLabelValues("get-members").Inc()
 				log.Fatalf("Unable to retrieve group settings. %v", err)
+				return
 			}
 			result = apiResult
 		}
@@ -176,6 +181,7 @@ func updateRoles() {
 			outofclusterconfig, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 			if err != nil {
 				log.Fatalf("Unable to get kube config. %v", err)
+				return
 			}
 			kubeClusterConfig = outofclusterconfig
 		} else {
@@ -189,6 +195,7 @@ func updateRoles() {
 		if err != nil {
 			roleUpdateErrors.WithLabelValues("get-kube-client").Inc()
 			log.Fatalf("Unable to get in kube client. %v", err)
+			return
 		}
 		var subjects []rbacv1beta1.Subject
 		for _, member := range result.Members {
@@ -216,6 +223,7 @@ func updateRoles() {
 		if updateError != nil {
 			roleUpdateErrors.WithLabelValues("role-update").Inc()
 			log.Fatalf("Unable to update role. %v", updateError)
+			return
 		}
 		log.Printf("Updated %q.\n", updateResult.GetObjectMeta().GetName())
 		roleUpdates.WithLabelValues("role-update").Inc()
