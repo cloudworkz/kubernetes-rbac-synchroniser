@@ -49,6 +49,7 @@ var address string
 var clusterRoleName string
 var roleName string
 var groupList string
+var fakeGroupResponse bool
 var kubeConfig string
 var inClusterConfig bool
 var token string
@@ -59,6 +60,7 @@ func main() {
 	flag.StringVar(&clusterRoleName, "cluster-role-name", "developer", "The cluster role name with permissions.")
 	flag.StringVar(&roleName, "role-name", "developer", "The role binding name per namespace.")
 	flag.StringVar(&groupList, "group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
+	flag.BoolVar(&fakeGroupResponse, "fake-group-response", false, "Fake Google Admin API Response.")
 	flag.StringVar(&token, "token", "", "The google group setting API token.")
 	flag.StringVar(&tokenFilePath, "token-file-path", "", "The file with google group setting file.")
 	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
@@ -117,25 +119,29 @@ func serveMetrics(address string) {
 }
 
 func updateRoles() {
-	ctx := context.Background()
+	var service *admin.Service
+	if !fakeGroupResponse {
+		ctx := context.Background()
 
-	b, err := ioutil.ReadFile(filepath.Join(".credentials", "client_secret.json"))
-	if err != nil {
-		roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
+		b, err := ioutil.ReadFile(filepath.Join(".credentials", "client_secret.json"))
+		if err != nil {
+			roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
+			log.Fatalf("Unable to read client secret file: %v", err)
+		}
 
-	config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupMemberReadonlyScope)
-	if err != nil {
-		roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-	client := getClient(ctx, config)
+		config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupMemberReadonlyScope)
+		if err != nil {
+			roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
+			log.Fatalf("Unable to parse client secret file to config: %v", err)
+		}
+		client := getClient(ctx, config)
 
-	srv, err := admin.New(client)
-	if err != nil {
-		roleUpdateErrors.WithLabelValues("get-admin-client").Inc()
-		log.Fatalf("Unable to retrieve Group Settings Client %v", err)
+		srv, err := admin.New(client)
+		if err != nil {
+			roleUpdateErrors.WithLabelValues("get-admin-client").Inc()
+			log.Fatalf("Unable to retrieve Group Settings Client %v", err)
+		}
+		service = srv
 	}
 	groupListArray := strings.Split(groupList, ",")
 	for _, element := range groupListArray {
@@ -145,20 +151,26 @@ func updateRoles() {
 		if namespace == "" || email == "" {
 			log.Fatalf("Could not update group. Namespace or/and email are empty: %v %v", namespace, email)
 		}
-		log.Printf("email %q.\n", email)
-		log.Printf("srv %q.\n", srv)
-		var fakeResult = new(admin.Members)
-		var fakeMember = new(admin.Member)
-		fakeMember.Email = "sync-test@test.com"
-		fakeResult.Members = append(fakeResult.Members, fakeMember)
-		result := fakeResult
-		// result, err := srv.Members.List(email).Do()
-		// if err != nil {
-		// 	roleUpdateErrors.WithLabelValues("get-members").Inc()
-		// 	log.Fatalf("Unable to retrieve group settings. %v", err)
-		// }
+		//log.Printf("email %q.\n", email)
+		//log.Printf("srv %q.\n", srv)
 
-		log.Printf("GROUPS %q.\n", result)
+		var result *admin.Members
+		if fakeGroupResponse {
+			var fakeResult = new(admin.Members)
+			var fakeMember = new(admin.Member)
+			fakeMember.Email = "sync-test@test.com"
+			fakeResult.Members = append(fakeResult.Members, fakeMember)
+			result = fakeResult
+		} else {
+			apiResult, err := service.Members.List(email).Do()
+			if err != nil {
+				roleUpdateErrors.WithLabelValues("get-members").Inc()
+				log.Fatalf("Unable to retrieve group settings. %v", err)
+			}
+			result = apiResult
+		}
+
+		// log.Printf("GROUPS %q.\n", result)
 		var kubeClusterConfig *rest.Config
 		if kubeConfig != "" {
 			outofclusterconfig, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
