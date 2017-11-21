@@ -74,7 +74,7 @@ spec:
         image: quay.io/yacut/kubernetes-rbac-synchroniser
         imagePullPolicy: Always
         args:
-        - '-cluster-role-name=view'
+        - '-cluster-role-name=sync-test'
         - '-role-name=sync-test'
         - '-fake-group-response'
         - '-group-list=default:sync-fake@test.com'

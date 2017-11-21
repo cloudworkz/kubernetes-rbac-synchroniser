@@ -91,7 +91,7 @@ func main() {
 	go serveMetrics(address)
 	go handleSigterm(stopChan)
 	for {
-		go updateRoles()
+		updateRoles()
 		time.Sleep(time.Second * 30)
 	}
 }
