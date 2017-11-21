@@ -21,7 +21,6 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/admin/directory/v1"
-	"google.golang.org/api/groupssettings/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -129,17 +128,20 @@ func updateRoles(kubeconfig *rest.Config) {
 
 	b, err := ioutil.ReadFile(filepath.Join(".credentials", "client_secret.json"))
 	if err != nil {
+		roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
-	config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupReadonlyScope, groupssettings.AppsGroupsSettingsScope)
+	config, err := google.ConfigFromJSON(b, admin.AdminDirectoryGroupMemberReadonlyScope)
 	if err != nil {
+		roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
 	client := getClient(ctx, config)
 
 	srv, err := admin.New(client)
 	if err != nil {
+		roleUpdateErrors.WithLabelValues("get-admin-client").Inc()
 		log.Fatalf("Unable to retrieve Group Settings Client %v", err)
 	}
 	groupListArray := strings.Split(groupList, ",")
@@ -151,32 +153,48 @@ func updateRoles(kubeconfig *rest.Config) {
 			log.Fatalf("Could not update group. Namespace or/and email are empty: %v %v", namespace, email)
 		}
 		log.Printf("email %q.\n", email)
-		r, err := srv.Groups.Get(email).Do()
+		result, err := srv.Members.List(email).Do()
 		if err != nil {
+			roleUpdateErrors.WithLabelValues("get-members").Inc()
 			log.Fatalf("Unable to retrieve group settings. %v", err)
 		}
 
-		log.Printf("GROUPS %q.\n", r)
-		log.Printf("%s - %s", r.Email, r.Description)
+		log.Printf("GROUPS %q.\n", result)
 		clientset, err := kubernetes.NewForConfig(kubeconfig)
 		if err != nil {
+			roleUpdateErrors.WithLabelValues("get-kube-client").Inc()
 			panic(err)
 		}
-
+		var subjects []rbacv1beta1.Subject
+		for _, member := range result.Members {
+			subjects = append(subjects, rbacv1beta1.Subject{
+				Kind:     "User",
+				APIGroup: "rbac.authorization.k8s.io",
+				Name:     member.Email,
+			})
+		}
 		roleBinding := &rbacv1beta1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: roleName,
+				Name:      roleName,
+				Namespace: namespace,
 			},
+			RoleRef: rbacv1beta1.RoleRef{
+				Kind:     "ClusterRole",
+				APIGroup: "rbac.authorization.k8s.io",
+				Name:     clusterRoleName,
+			},
+			Subjects: subjects,
 		}
 
 		roleClient := clientset.RbacV1beta1().RoleBindings(namespace)
-		result, err := roleClient.Update(roleBinding)
-		if err != nil {
-			panic(err)
+		updateResult, updateError := roleClient.Update(roleBinding)
+		if updateError != nil {
+			roleUpdateErrors.WithLabelValues("role-update").Inc()
+			panic(updateError)
 		}
-		log.Printf("Updated %q.\n", result.GetObjectMeta().GetName())
+		log.Printf("Updated %q.\n", updateResult.GetObjectMeta().GetName())
+		roleUpdates.WithLabelValues("role-update").Inc()
 	}
-
 }
 
 func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
