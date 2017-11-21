@@ -54,6 +54,7 @@ var kubeConfig string
 var inClusterConfig bool
 var token string
 var tokenFilePath string
+var updateInterval time.Duration
 
 func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
@@ -65,6 +66,7 @@ func main() {
 	flag.StringVar(&tokenFilePath, "token-file-path", "", "The file with google group setting file.")
 	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Absolute path to the kubeconfig file.")
+	flag.DurationVar(&updateInterval, "update-interval", 60, "Update interval in seconds.")
 	flag.Parse()
 
 	if clusterRoleName == "" {
@@ -92,7 +94,7 @@ func main() {
 	go handleSigterm(stopChan)
 	for {
 		updateRoles()
-		time.Sleep(time.Second * 30)
+		time.Sleep(time.Second * updateInterval)
 	}
 }
 
