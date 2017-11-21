@@ -158,7 +158,7 @@ func updateRoles() {
 		if fakeGroupResponse {
 			var fakeResult = new(admin.Members)
 			var fakeMember = new(admin.Member)
-			fakeMember.Email = "sync-test@test.com"
+			fakeMember.Email = "sync-fake@test.com"
 			fakeResult.Members = append(fakeResult.Members, fakeMember)
 			result = fakeResult
 		} else {
@@ -175,20 +175,20 @@ func updateRoles() {
 		if kubeConfig != "" {
 			outofclusterconfig, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 			if err != nil {
-				panic(err.Error())
+				log.Fatalf("Unable to get kube config. %v", err)
 			}
 			kubeClusterConfig = outofclusterconfig
 		} else {
 			inclusterkubeconfig, err := rest.InClusterConfig()
 			if err != nil {
-				panic(err.Error())
+				log.Fatalf("Unable to get in cluster kube config. %v", err)
 			}
 			kubeClusterConfig = inclusterkubeconfig
 		}
 		clientset, err := kubernetes.NewForConfig(kubeClusterConfig)
 		if err != nil {
 			roleUpdateErrors.WithLabelValues("get-kube-client").Inc()
-			panic(err)
+			log.Fatalf("Unable to get in kube client. %v", err)
 		}
 		var subjects []rbacv1beta1.Subject
 		for _, member := range result.Members {
@@ -215,7 +215,7 @@ func updateRoles() {
 		updateResult, updateError := roleClient.Update(roleBinding)
 		if updateError != nil {
 			roleUpdateErrors.WithLabelValues("role-update").Inc()
-			panic(updateError)
+			log.Fatalf("Unable to update role. %v", updateError)
 		}
 		log.Printf("Updated %q.\n", updateResult.GetObjectMeta().GetName())
 		roleUpdates.WithLabelValues("role-update").Inc()
