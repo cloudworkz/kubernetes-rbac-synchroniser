@@ -26,7 +26,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
 var (
@@ -50,7 +49,8 @@ var address string
 var clusterRoleName string
 var roleName string
 var groupList string
-var kubeconfig *string
+var kubeConfig string
+var inClusterConfig bool
 var token string
 var tokenFilePath string
 
@@ -61,11 +61,8 @@ func main() {
 	flag.StringVar(&groupList, "group-list", "default:group1@test.com,kube-system:group2@test.com", "The group list per namespace comma separated.")
 	flag.StringVar(&token, "token", "", "The google group setting API token.")
 	flag.StringVar(&tokenFilePath, "token-file-path", "", "The file with google group setting file.")
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
+	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
+	flag.StringVar(&kubeConfig, "kubeconfig", "", "Absolute path to the kubeconfig file.")
 	flag.Parse()
 
 	if clusterRoleName == "" {
@@ -86,17 +83,13 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		panic(err)
-	}
 
 	stopChan := make(chan struct{}, 1)
 
 	go serveMetrics(address)
 	go handleSigterm(stopChan)
 	for {
-		go updateRoles(config)
+		go updateRoles()
 		time.Sleep(time.Second * 30)
 	}
 }
@@ -123,7 +116,7 @@ func serveMetrics(address string) {
 	log.Fatal(http.ListenAndServe(address, nil))
 }
 
-func updateRoles(kubeconfig *rest.Config) {
+func updateRoles() {
 	ctx := context.Background()
 
 	b, err := ioutil.ReadFile(filepath.Join(".credentials", "client_secret.json"))
@@ -153,14 +146,34 @@ func updateRoles(kubeconfig *rest.Config) {
 			log.Fatalf("Could not update group. Namespace or/and email are empty: %v %v", namespace, email)
 		}
 		log.Printf("email %q.\n", email)
-		result, err := srv.Members.List(email).Do()
-		if err != nil {
-			roleUpdateErrors.WithLabelValues("get-members").Inc()
-			log.Fatalf("Unable to retrieve group settings. %v", err)
-		}
+		log.Printf("srv %q.\n", srv)
+		var fakeResult = new(admin.Members)
+		var fakeMember = new(admin.Member)
+		fakeMember.Email = "sync-test@test.com"
+		fakeResult.Members = append(fakeResult.Members, fakeMember)
+		result := fakeResult
+		// result, err := srv.Members.List(email).Do()
+		// if err != nil {
+		// 	roleUpdateErrors.WithLabelValues("get-members").Inc()
+		// 	log.Fatalf("Unable to retrieve group settings. %v", err)
+		// }
 
 		log.Printf("GROUPS %q.\n", result)
-		clientset, err := kubernetes.NewForConfig(kubeconfig)
+		var kubeClusterConfig *rest.Config
+		if kubeConfig != "" {
+			outofclusterconfig, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+			if err != nil {
+				panic(err.Error())
+			}
+			kubeClusterConfig = outofclusterconfig
+		} else {
+			inclusterkubeconfig, err := rest.InClusterConfig()
+			if err != nil {
+				panic(err.Error())
+			}
+			kubeClusterConfig = inclusterkubeconfig
+		}
+		clientset, err := kubernetes.NewForConfig(kubeClusterConfig)
 		if err != nil {
 			roleUpdateErrors.WithLabelValues("get-kube-client").Inc()
 			panic(err)
