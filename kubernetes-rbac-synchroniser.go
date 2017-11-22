@@ -61,7 +61,7 @@ func main() {
 	flag.StringVar(&configSubject, "config-subject", "", "The Config Subject Email. see https://developers.google.com/admin-sdk/directory/v1/guides/delegation")
 	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Absolute path to the kubeconfig file.")
-	flag.DurationVar(&updateInterval, "update-interval", 600000, "Update interval in seconds. e.g. 30s or 5m")
+	flag.DurationVar(&updateInterval, "update-interval", time.Minute*15, "Update interval in seconds. e.g. 30s or 5m")
 	flag.Parse()
 
 	if clusterRoleName == "" {
