@@ -182,7 +182,7 @@ func updateRoles() {
 				Name:      roleBindingName,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					"lastUpdate": time.Now().String(),
+					"lastSync": time.Now().UTC().Format(time.RFC3339),
 				},
 			},
 			RoleRef: rbacv1beta1.RoleRef{
