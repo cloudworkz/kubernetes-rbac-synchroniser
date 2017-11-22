@@ -17,8 +17,9 @@
 > see: https://stackoverflow.com/questions/45945074/iam-and-rbac-conflicts-on-google-cloud-container-engine-gke/45945239#45945239
 
 ### Flags
+
 | Flag                 | Description                                         | Defalut     |
-| :------------------- | :-------------------------------------------------- |             |
+| :------------------- | :-------------------------------------------------- |:----------- |
 | -cluster-role-name   | The cluster role name with permissions.             | "view"      |
 | -config-file-path    | The Path to the Service Account's Private Key file. |             |
 | -config-subject      | The Config Subject Email.                           |             |
