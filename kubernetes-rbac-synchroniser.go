@@ -182,7 +182,7 @@ func updateRoles() {
 				Name:      roleBindingName,
 				Namespace: namespace,
 				Labels: map[string]string{
-					"lastUpdated": time.Now().String(),
+					"lastUpdated": time.Now().Format("2000-01-01 00:00:00"),
 				},
 			},
 			RoleRef: rbacv1beta1.RoleRef{
