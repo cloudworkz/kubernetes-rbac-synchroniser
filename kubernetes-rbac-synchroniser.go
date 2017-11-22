@@ -24,17 +24,17 @@ import (
 )
 
 var (
-	roleUpdates = prometheus.NewCounterVec(
+	promSuccess = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "role_updates",
+			Name: "rbac_synchroniser_success",
 			Help: "Cumulative number of role update operations",
 		},
 		[]string{"count"},
 	)
 
-	roleUpdateErrors = prometheus.NewCounterVec(
+	promErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "role_update_errors",
+			Name: "rbac_synchroniser_errors",
 			Help: "Cumulative number of errors during role update operations",
 		},
 		[]string{"count"},
@@ -120,8 +120,8 @@ func serveMetrics(address string) {
 		w.Write([]byte("OK"))
 	})
 
-	prometheus.MustRegister(roleUpdates)
-	prometheus.MustRegister(roleUpdateErrors)
+	prometheus.MustRegister(promSuccess)
+	prometheus.MustRegister(promErrors)
 	http.Handle("/metrics", promhttp.Handler())
 
 	log.Printf("Server listing %v\n", address)
@@ -164,7 +164,7 @@ func updateRoles() {
 		}
 		clientset, err := kubernetes.NewForConfig(kubeClusterConfig)
 		if err != nil {
-			roleUpdateErrors.WithLabelValues("get-kube-client").Inc()
+			promErrors.WithLabelValues("get-kube-client").Inc()
 			log.Fatalf("Unable to get in kube client. %v", err)
 			return
 		}
@@ -193,12 +193,12 @@ func updateRoles() {
 		roleClient := clientset.RbacV1beta1().RoleBindings(namespace)
 		updateResult, updateError := roleClient.Update(roleBinding)
 		if updateError != nil {
-			roleUpdateErrors.WithLabelValues("role-update").Inc()
+			promErrors.WithLabelValues("role-update").Inc()
 			log.Fatalf("Unable to update %q rolebinding. %v", roleName, updateError)
 			return
 		}
 		log.Printf("Updated %q rolebinding in %q namespace.\n", updateResult.GetObjectMeta().GetName(), namespace)
-		roleUpdates.WithLabelValues("role-update").Inc()
+		promSuccess.WithLabelValues("role-update").Inc()
 	}
 }
 
@@ -216,14 +216,14 @@ func getService(configFilePath string, configSubject string) *admin.Service {
 
 	jsonCredentials, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
-		roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
+		promErrors.WithLabelValues("get-admin-config").Inc()
 		log.Fatalf("Unable to read client secret file: %v", err)
 		return nil
 	}
 
 	config, err := google.JWTConfigFromJSON(jsonCredentials, admin.AdminDirectoryGroupMemberReadonlyScope, admin.AdminDirectoryGroupReadonlyScope)
 	if err != nil {
-		roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
+		promErrors.WithLabelValues("get-admin-config").Inc()
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 		return nil
 	}
@@ -233,7 +233,7 @@ func getService(configFilePath string, configSubject string) *admin.Service {
 
 	srv, err := admin.New(client)
 	if err != nil {
-		roleUpdateErrors.WithLabelValues("get-admin-client").Inc()
+		promErrors.WithLabelValues("get-admin-client").Inc()
 		log.Fatalf("Unable to retrieve Group Settings Client %v", err)
 		return nil
 	}
@@ -253,7 +253,7 @@ func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
 
 	result, err := service.Members.List(email).Do()
 	if err != nil {
-		roleUpdateErrors.WithLabelValues("get-members").Inc()
+		promErrors.WithLabelValues("get-members").Inc()
 		log.Fatalf("Unable to get group members. %v", err)
 		return nil, err
 	}

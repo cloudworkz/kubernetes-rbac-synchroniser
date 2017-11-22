@@ -11,7 +11,14 @@
 
 > see guide: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
 
+### Prometheus metrics
+
+- **rbac_synchroniser_success**: Cumulative number of role update operations.
+- **rbac_synchroniser_errors**: Cumulative number of errors during role update operations.
+
 ### Links
 
+- https://developers.google.com/admin-sdk/directory/v1/guides/delegation
+- https://developers.google.com/admin-sdk/directory/v1/guides/manage-group-members
 - https://github.com/kubernetes/client-go
 - https://github.com/prometheus/client_golang
