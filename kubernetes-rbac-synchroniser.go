@@ -130,11 +130,7 @@ func serveMetrics(address string) {
 
 // Gets group users and updates kubernetes rolebindings
 func updateRoles() {
-	var service *admin.Service
-	if !fakeGroupResponse {
-		service = getService(configFilePath, configSubject)
-	}
-
+	service := getService(configFilePath, configSubject)
 	groupListArray := strings.Split(groupList, ",")
 	for _, element := range groupListArray {
 		elementArray := strings.Split(element, ":")
@@ -145,17 +141,10 @@ func updateRoles() {
 			return
 		}
 
-		var result *admin.Members
-		if !fakeGroupResponse {
-			apiResult, err := service.Members.List(email).Do()
-			if err != nil {
-				roleUpdateErrors.WithLabelValues("get-members").Inc()
-				log.Fatalf("Unable to get group members. %v", err)
-				return
-			}
-			result = apiResult
-		} else {
-			result = getFakeGroupResponse()
+		result, error := getMembers(service, email)
+		if error != nil {
+			log.Fatalf("Unable to get members. %v", error)
+			return
 		}
 
 		var kubeClusterConfig *rest.Config
@@ -179,8 +168,9 @@ func updateRoles() {
 			log.Fatalf("Unable to get in kube client. %v", err)
 			return
 		}
+
 		var subjects []rbacv1beta1.Subject
-		for _, member := range result.Members {
+		for _, member := range result {
 			subjects = append(subjects, rbacv1beta1.Subject{
 				Kind:     "User",
 				APIGroup: "rbac.authorization.k8s.io",
@@ -220,6 +210,10 @@ func updateRoles() {
 // Returns:
 //    Admin SDK directory service object.
 func getService(configFilePath string, configSubject string) *admin.Service {
+	if fakeGroupResponse {
+		return nil
+	}
+
 	jsonCredentials, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
 		roleUpdateErrors.WithLabelValues("get-admin-config").Inc()
@@ -246,13 +240,39 @@ func getService(configFilePath string, configSubject string) *admin.Service {
 	return srv
 }
 
+func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
+	if fakeGroupResponse {
+		return getFakeMembers(), nil
+	}
+
+	result, err := service.Members.List(email).Do()
+	if err != nil {
+		roleUpdateErrors.WithLabelValues("get-members").Inc()
+		log.Fatalf("Unable to get group members. %v", err)
+		return nil, err
+	}
+
+	var userList []*admin.Member
+	for _, member := range result.Members {
+		log.Printf("Member type %q", member.Type)
+		if member.Type == "GROUP" {
+			groupMembers, _ := getMembers(service, member.Email)
+			userList = append(userList, groupMembers...)
+		} else {
+			userList = append(userList, member)
+		}
+	}
+
+	return userList, nil
+}
+
 // Build and returns a fake Admin members object.
 // Returns:
 //    Admin SDK members object.
-func getFakeGroupResponse() *admin.Members {
-	var fakeResult = new(admin.Members)
+func getFakeMembers() []*admin.Member {
+	var fakeResult []*admin.Member
 	var fakeMember = new(admin.Member)
 	fakeMember.Email = "sync-fake-response@example.com"
-	fakeResult.Members = append(fakeResult.Members, fakeMember)
+	fakeResult = append(fakeResult, fakeMember)
 	return fakeResult
 }
