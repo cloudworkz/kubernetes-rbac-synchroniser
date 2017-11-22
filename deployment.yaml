@@ -66,12 +66,13 @@ spec:
         image: quay.io/yacut/kubernetes-rbac-synchroniser
         imagePullPolicy: Always
         args:
-        - '-update-interval=60s'
+        - '-update-interval=15m'
         - '-cluster-role-name=sync-test'
         - '-role-name=sync-test'
         - '-fake-group-response'
         - '-group-list=default:sync-fake@test.com'
-        # - '-credentials-file-path=/secrets/credentials.json'
+        # - '-config-subject=admin@example.com'
+        # - '-config-file-path=/secrets/credentials.json'
         livenessProbe:
           httpGet:
             path: /healthz
@@ -82,7 +83,7 @@ spec:
                 memory: 10Mi
             limits:
                 cpu: 0.1
-                memory: 100Mi
+                memory: 50Mi
       #   volumeMounts:
       #     - name: google-admin-api-credentials
       #       mountPath: /secrets

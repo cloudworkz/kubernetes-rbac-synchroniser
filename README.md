@@ -4,11 +4,12 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/yacut/kubernetes-rbac-synchroniser)](https://goreportcard.com/report/github.com/yacut/kubernetes-rbac-synchroniser)
 
 
-## Preparation
+## Requirements
 
-- Create the google group api credentials json file: `.credentials/client_secret.json`
-- Run the app and generate the access token
-- Run the app again with the `-token` flag
+- The service account's private key file: **-credentials-file-path** flag
+- The email of the user with permissions to access the Admin APIs:  **-config-subject** flag
+
+> see guide: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
 
 ### Links
 
