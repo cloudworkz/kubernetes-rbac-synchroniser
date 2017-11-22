@@ -181,9 +181,9 @@ func updateRoles() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      roleBindingName,
 				Namespace: namespace,
-				// Labels: map[string]string{
-				// 	"lastUpdate": time.Now().String(),
-				// },
+				Annotations: map[string]string{
+					"lastUpdate": time.Now().String(),
+				},
 			},
 			RoleRef: rbacv1beta1.RoleRef{
 				Kind:     "ClusterRole",
