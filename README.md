@@ -6,10 +6,15 @@
 
 ## Requirements
 
-- The service account's private key file: **-credentials-file-path** flag
+- The service account's private key file: **-config-file-path** flag
 - The email of the user with permissions to access the Admin APIs:  **-config-subject** flag
 
 > see guide: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
+
+- The Google Group list per Kubernetes namespace comma separated: **-group-list** flag
+- Configure Minimal GKE IAM permissions for each Google Group
+
+> see: https://stackoverflow.com/questions/45945074/iam-and-rbac-conflicts-on-google-cloud-container-engine-gke/45945239#45945239
 
 ### Prometheus metrics
 

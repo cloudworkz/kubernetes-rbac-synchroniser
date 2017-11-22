@@ -42,7 +42,7 @@ var (
 )
 var address string
 var clusterRoleName string
-var roleName string
+var roleBindingName string
 var groupList string
 var fakeGroupResponse bool
 var kubeConfig string
@@ -54,7 +54,7 @@ var updateInterval time.Duration
 func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
 	flag.StringVar(&clusterRoleName, "cluster-role-name", "view", "The cluster role name with permissions.")
-	flag.StringVar(&roleName, "role-name", "developer", "The role binding name per namespace.")
+	flag.StringVar(&roleBindingName, "rolebinding-name", "developer", "The role binding name per namespace.")
 	flag.StringVar(&groupList, "group-list", "", "The group list per namespace comma separated. e.g.: default:group1@test.com,kube-system:group2@test.com")
 	flag.BoolVar(&fakeGroupResponse, "fake-group-response", false, "Fake Google Admin API Response. Always response with one group and one member: sync-fake-response@example.com.")
 	flag.StringVar(&configFilePath, "config-file-path", "", "The Path to the Service Account's Private Key file. see https://developers.google.com/admin-sdk/directory/v1/guides/delegation")
@@ -70,7 +70,7 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	if roleName == "" {
+	if roleBindingName == "" {
 		log.Println("Missing -role-name")
 		log.Println()
 		flag.Usage()
@@ -179,7 +179,7 @@ func updateRoles() {
 		}
 		roleBinding := &rbacv1beta1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      roleName,
+				Name:      roleBindingName,
 				Namespace: namespace,
 			},
 			RoleRef: rbacv1beta1.RoleRef{
@@ -194,7 +194,7 @@ func updateRoles() {
 		updateResult, updateError := roleClient.Update(roleBinding)
 		if updateError != nil {
 			promErrors.WithLabelValues("role-update").Inc()
-			log.Fatalf("Unable to update %q rolebinding. %v", roleName, updateError)
+			log.Fatalf("Unable to update %q rolebinding. %v", roleBindingName, updateError)
 			return
 		}
 		log.Printf("Updated %q rolebinding in %q namespace.\n", updateResult.GetObjectMeta().GetName(), namespace)

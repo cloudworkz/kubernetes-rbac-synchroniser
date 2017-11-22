@@ -65,10 +65,13 @@ spec:
       - name: rbac-synchroniser
         image: quay.io/yacut/kubernetes-rbac-synchroniser
         imagePullPolicy: Always
+        # Sync the "sync-fake@example.com" Google Group
+        # with the "sync-test" rolebinding and the "sync-test" cluster role
+        # in "default" namespace
         args:
         - '-update-interval=15m'
         - '-cluster-role-name=sync-test'
-        - '-role-name=sync-test'
+        - '-rolebinding-name=sync-test'
         - '-fake-group-response'
         - '-group-list=default:sync-fake@test.com'
         # - '-config-subject=admin@example.com'
