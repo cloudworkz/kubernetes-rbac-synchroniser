@@ -240,6 +240,12 @@ func getService(configFilePath string, configSubject string) *admin.Service {
 	return srv
 }
 
+// Gets recursive the group members by email and returns the user list
+// Args:
+//    service: Admin SDK directory service object.
+//    email: The email of the group.
+// Returns:
+//    Admin SDK member list.
 func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
 	if fakeGroupResponse {
 		return getFakeMembers(), nil
@@ -254,7 +260,6 @@ func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
 
 	var userList []*admin.Member
 	for _, member := range result.Members {
-		log.Printf("Member type %q", member.Type)
 		if member.Type == "GROUP" {
 			groupMembers, _ := getMembers(service, member.Email)
 			userList = append(userList, groupMembers...)
