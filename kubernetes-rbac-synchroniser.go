@@ -280,15 +280,18 @@ func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
 // Returns:
 //    Admin SDK member list.
 func uniq(list []*admin.Member) []*admin.Member {
-	uniqueSet := make(map[*admin.Member]bool, len(list))
-	for _, x := range list {
-		uniqueSet[x] = true
+	var uniqSet []*admin.Member
+loop:
+	for _, l := range list {
+		for _, x := range uniqSet {
+			if l.Email == x.Email {
+				continue loop
+			}
+		}
+		uniqSet = append(uniqSet, l)
 	}
-	result := make([]*admin.Member, 0, len(uniqueSet))
-	for x := range uniqueSet {
-		result = append(result, x)
-	}
-	return result
+
+	return uniqSet
 }
 
 // Build and returns a fake Admin members object.

@@ -30,4 +30,13 @@ func TestUniq(t *testing.T) {
 	if list2Length != 3 {
 		t.Errorf("Uniq was incorrect, got: %d, want: %d.", list2Length, 3)
 	}
+	if uniqUserList2[0].Email != member1.Email {
+		t.Errorf("Uniq sort was incorrect, got: %q, want: %q.", uniqUserList2[0].Email, member1.Email)
+	}
+	if uniqUserList2[1].Email != member2.Email {
+		t.Errorf("Uniq sort was incorrect, got: %q, want: %q.", uniqUserList2[1].Email, member2.Email)
+	}
+	if uniqUserList2[2].Email != member3.Email {
+		t.Errorf("Uniq sort was incorrect, got: %q, want: %q.", uniqUserList2[2].Email, member3.Email)
+	}
 }
