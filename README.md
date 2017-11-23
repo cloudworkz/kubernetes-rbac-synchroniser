@@ -41,7 +41,7 @@ RBAC Synchroniser pulls a Google Group, extracts Google Group Member Emails and 
 
 ### Examples
 
-[https://github.com/yacut/kubernetes-rbac-synchroniser/](https://github.com/yacut/kubernetes-rbac-synchroniser/blob/21e6298d42de6406a617321b6039218a31a88c29/examples/)
+[https://github.com/yacut/kubernetes-rbac-synchroniser/tree/master/examples](https://github.com/yacut/kubernetes-rbac-synchroniser/tree/master/examples)
 
 ### Links
 
