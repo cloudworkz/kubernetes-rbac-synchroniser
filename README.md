@@ -5,7 +5,7 @@
 
 ### What It Does
 
-RBAC Synchroniser pulls a Google Group by Email, extracts Google Group Member Emails and updates the Kubernetes RoleBinding in the given namespace.
+RBAC Synchroniser pulls a Google Group, extracts Google Group Member Emails and updates the Kubernetes RoleBinding in the given namespace.
 
 ### Requirements
 
@@ -38,6 +38,10 @@ RBAC Synchroniser pulls a Google Group by Email, extracts Google Group Member Em
 
 - **rbac_synchroniser_success**: Cumulative number of role update operations.
 - **rbac_synchroniser_errors**: Cumulative number of errors during role update operations.
+
+### Examples
+
+[https://github.com/yacut/kubernetes-rbac-synchroniser/](https://github.com/yacut/kubernetes-rbac-synchroniser/blob/21e6298d42de6406a617321b6039218a31a88c29/examples/)
 
 ### Links
 
