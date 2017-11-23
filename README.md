@@ -3,6 +3,9 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/yacut/kubernetes-rbac-synchroniser.svg?maxAge=604800)](https://hub.docker.com/r/yacut/kubernetes-rbac-synchroniser)
 [![Go Report Card](https://goreportcard.com/badge/github.com/yacut/kubernetes-rbac-synchroniser)](https://goreportcard.com/report/github.com/yacut/kubernetes-rbac-synchroniser)
 
+### What It Does
+
+RBAC Synchroniser pulls a Google Group by Email, extracts Google Group Member Emails and updates the Kubernetes RoleBinding in the given namespace.
 
 ### Requirements
 
