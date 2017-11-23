@@ -12,7 +12,7 @@
 > see guide: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
 
 - The Google Group list per Kubernetes namespace comma separated: **-group-list** flag
-- Configure Minimal GKE IAM permissions for each Google Group
+- Configure Minimal GKE IAM permissions for each Google Group: `gcloud beta iam roles create minimal_gke_role --project my_project --title "Container Engine Minimal" --description "Minimal GKE Role which allows 'gcloud container clusters get-credentials' command" --permissions "container.apiServices.get,container.apiServices.list,container.clusters.get,container.clusters.getCredentials"`
 
 > see: https://stackoverflow.com/questions/45945074/iam-and-rbac-conflicts-on-google-cloud-container-engine-gke/45945239#45945239
 
