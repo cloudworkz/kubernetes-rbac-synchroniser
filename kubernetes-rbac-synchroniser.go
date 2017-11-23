@@ -170,7 +170,7 @@ func updateRoles() {
 		}
 
 		var subjects []rbacv1beta1.Subject
-		for _, member := range result {
+		for _, member := range uniq(result) {
 			subjects = append(subjects, rbacv1beta1.Subject{
 				Kind:     "User",
 				APIGroup: "rbac.authorization.k8s.io",
@@ -271,7 +271,7 @@ func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
 		}
 	}
 
-	return uniq(userList), nil
+	return userList, nil
 }
 
 // Remove duplicates from user list
