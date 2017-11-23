@@ -271,7 +271,24 @@ func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
 		}
 	}
 
-	return userList, nil
+	return uniq(userList), nil
+}
+
+// Remove duplicates from user list
+// Args:
+//    list: Admin SDK member list.
+// Returns:
+//    Admin SDK member list.
+func uniq(list []*admin.Member) []*admin.Member {
+	uniqueSet := make(map[*admin.Member]bool, len(list))
+	for _, x := range list {
+		uniqueSet[x] = true
+	}
+	result := make([]*admin.Member, 0, len(uniqueSet))
+	for x := range uniqueSet {
+		result = append(result, x)
+	}
+	return result
 }
 
 // Build and returns a fake Admin members object.
