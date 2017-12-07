@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/admin/directory/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
@@ -62,6 +62,7 @@ var inClusterConfig bool
 var configFilePath string
 var configSubject string
 var updateInterval time.Duration
+var logJSON bool
 
 func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
@@ -74,37 +75,37 @@ func main() {
 	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Absolute path to the kubeconfig file.")
 	flag.DurationVar(&updateInterval, "update-interval", time.Minute*15, "Update interval in seconds. e.g. 30s or 5m")
+	flag.BoolVar(&logJSON, "log-json", false, "Log as JSON instead of the default ASCII formatter.")
 	flag.Parse()
 
+	if logJSON {
+		log.SetFormatter(&log.JSONFormatter{
+			FieldMap: log.FieldMap{
+				log.FieldKeyTime: "@timestamp",
+			},
+		})
+	}
+	log.SetOutput(os.Stdout)
+
 	if clusterRoleName == "" {
-		log.Println("Missing -cluster-role-name")
-		log.Println()
 		flag.Usage()
-		os.Exit(1)
+		log.Fatal("Missing -cluster-role-name")
 	}
 	if roleBindingName == "" {
-		log.Println("Missing -role-name")
-		log.Println()
 		flag.Usage()
-		os.Exit(1)
+		log.Fatal("Missing -role-name")
 	}
 	if len(groupList) < 1 {
-		log.Println("Missing -group-list")
-		log.Println()
 		flag.Usage()
-		os.Exit(1)
+		log.Fatal("Missing -group-list")
 	}
 	if configFilePath == "" {
-		log.Println("Missing -config-file-path")
-		log.Println()
 		flag.Usage()
-		os.Exit(1)
+		log.Fatal("Missing -config-file-path")
 	}
 	if configSubject == "" {
-		log.Println("Missing -config-subject")
-		log.Println()
 		flag.Usage()
-		os.Exit(1)
+		log.Fatal("Missing -config-subject")
 	}
 
 	stopChan := make(chan struct{}, 1)
@@ -121,7 +122,7 @@ func handleSigterm(stopChan chan struct{}) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM)
 	<-signals
-	log.Println("Received SIGTERM. Terminating...")
+	log.Info("Received SIGTERM. Terminating...")
 	close(stopChan)
 }
 
@@ -136,7 +137,9 @@ func serveMetrics(address string) {
 	prometheus.MustRegister(promErrors)
 	http.Handle("/metrics", promhttp.Handler())
 
-	log.Printf("Server listing %v\n", address)
+	log.WithFields(log.Fields{
+		"address": address,
+	}).Info("Server started")
 	log.Fatal(http.ListenAndServe(address, nil))
 }
 
@@ -148,13 +151,18 @@ func updateRoles() {
 		namespace, email := elementArray[0], elementArray[1]
 
 		if namespace == "" || email == "" {
-			log.Fatalf("Could not update group. Namespace or/and email are empty: %v %v", namespace, email)
+			log.WithFields(log.Fields{
+				"namespace": namespace,
+				"email":     email,
+			}).Error("Could not update group. Namespace or/and email are empty.")
 			return
 		}
 
 		result, error := getMembers(service, email)
 		if error != nil {
-			log.Fatalf("Unable to get members. %v", error)
+			log.WithFields(log.Fields{
+				"error": error,
+			}).Error("Unable to get members.")
 			return
 		}
 
@@ -162,21 +170,27 @@ func updateRoles() {
 		if kubeConfig != "" {
 			outOfClusterConfig, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 			if err != nil {
-				log.Fatalf("Unable to get kube config. %v", err)
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Error("Unable to get kube config.")
 				return
 			}
 			kubeClusterConfig = outOfClusterConfig
 		} else {
 			inClusterConfig, err := rest.InClusterConfig()
 			if err != nil {
-				log.Fatalf("Unable to get in cluster kube config. %v", err)
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Error("Unable to get in cluster kube config.")
 			}
 			kubeClusterConfig = inClusterConfig
 		}
 		clientset, err := kubernetes.NewForConfig(kubeClusterConfig)
 		if err != nil {
 			promErrors.WithLabelValues("get-kube-client").Inc()
-			log.Fatalf("Unable to get in kube client. %v", err)
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("Unable to get in kube client.")
 			return
 		}
 
@@ -208,10 +222,16 @@ func updateRoles() {
 		updateResult, updateError := roleClient.Update(roleBinding)
 		if updateError != nil {
 			promErrors.WithLabelValues("role-update").Inc()
-			log.Fatalf("Unable to update %q rolebinding. %v", roleBindingName, updateError)
+			log.WithFields(log.Fields{
+				"rolebinding": roleBindingName,
+				"error":       updateError,
+			}).Error("Unable to update rolebinding.")
 			return
 		}
-		log.Printf("Updated %q rolebinding in %q namespace.\n", updateResult.GetObjectMeta().GetName(), namespace)
+		log.WithFields(log.Fields{
+			"rolebinding": updateResult.GetObjectMeta().GetName(),
+			"namespace":   namespace,
+		}).Info("Updated rolebinding.")
 		promSuccess.WithLabelValues("role-update").Inc()
 	}
 }
@@ -231,14 +251,18 @@ func getService(configFilePath string, configSubject string) *admin.Service {
 	jsonCredentials, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
 		promErrors.WithLabelValues("get-admin-config").Inc()
-		log.Fatalf("Unable to read client secret file: %v", err)
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("Unable to read client secret file.")
 		return nil
 	}
 
 	config, err := google.JWTConfigFromJSON(jsonCredentials, admin.AdminDirectoryGroupMemberReadonlyScope, admin.AdminDirectoryGroupReadonlyScope)
 	if err != nil {
 		promErrors.WithLabelValues("get-admin-config").Inc()
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("Unable to parse client secret file to config.")
 		return nil
 	}
 	config.Subject = configSubject
@@ -248,7 +272,9 @@ func getService(configFilePath string, configSubject string) *admin.Service {
 	srv, err := admin.New(client)
 	if err != nil {
 		promErrors.WithLabelValues("get-admin-client").Inc()
-		log.Fatalf("Unable to retrieve Group Settings Client %v", err)
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("Unable to retrieve Group Settings Client.")
 		return nil
 	}
 	return srv
@@ -268,7 +294,9 @@ func getMembers(service *admin.Service, email string) ([]*admin.Member, error) {
 	result, err := service.Members.List(email).Do()
 	if err != nil {
 		promErrors.WithLabelValues("get-members").Inc()
-		log.Fatalf("Unable to get group members. %v", err)
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("Unable to get group members.")
 		return nil, err
 	}
 

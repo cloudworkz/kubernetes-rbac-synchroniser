@@ -34,6 +34,7 @@ RBAC Synchroniser pulls a Google Group, extracts Google Group Member Emails and 
 | -listen-address      | The address to listen on for HTTP requests.              | ":8080"     |
 | -rolebinding-name    | The role binding name per namespace.                     | "developer" |
 | -update-interval     | Update interval in seconds.                              | 15m0s       |
+| -log-json            | Log as JSON instead of the default ASCII formatter.      | false       |
 
 ### Prometheus metrics
 
