@@ -11,11 +11,11 @@ RBAC Synchroniser pulls a Google Group, extracts Google Group Member Emails and 
 ### Requirements
 
 - The service account's private key file: **-config-file-path** flag
-- The email of the user with permissions to access the Admin APIs:  **-config-subject** flag
+- The email of the user with permissions to access the Admin APIs:  **-google-admin-email** flag
 
 > see guide: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
 
-- The Google Group list per Kubernetes namespace: **-group-list** flag
+- The Google Group list per Kubernetes namespace: **-namespace-group** flag
 - Configure Minimal GKE IAM permissions for each Google Group: `gcloud beta iam roles create minimal_gke_role --project my_project --title "Container Engine Minimal" --description "Minimal GKE Role which allows 'gcloud container clusters get-credentials' command" --permissions "container.apiServices.get,container.apiServices.list,container.clusters.get,container.clusters.getCredentials"`
 
 > see: https://stackoverflow.com/questions/45945074/iam-and-rbac-conflicts-on-google-cloud-container-engine-gke/45945239#45945239
@@ -26,9 +26,9 @@ RBAC Synchroniser pulls a Google Group, extracts Google Group Member Emails and 
 | :------------------- | :------------------------------------------------------- |:----------- |
 | -cluster-role-name   | The cluster role name with permissions.                  | "view"      |
 | -config-file-path    | The Path to the Service Account's Private Key file.      |             |
-| -config-subject      | The Config Subject Email.                                |             |
+| -google-admin-email  | The Google Admin Email.                                  |             |
 | -fake-group-response | Fake Google Admin API Response.                          |             |
-| -group-list          | The group list per namespace. May be used multiple times.|             |
+| -namespace-group     | The group and namespace. May be used multiple times.     |             |
 | -in-cluster-config   | Use in cluster kubeconfig.                               | true        |
 | -kubeconfig          | Absolute path to the kubeconfig file.                    |             |
 | -listen-address      | The address to listen on for HTTP requests.              | ":8080"     |

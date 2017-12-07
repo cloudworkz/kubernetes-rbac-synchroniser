@@ -24,14 +24,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type groupListFlag []string
+type namespaceGroupListFlag []string
 
-func (v *groupListFlag) Set(value string) error {
+func (v *namespaceGroupListFlag) Set(value string) error {
 	*v = append(*v, value)
 	return nil
 }
 
-func (v *groupListFlag) String() string {
+func (v *namespaceGroupListFlag) String() string {
 	return fmt.Sprint(*v)
 }
 
@@ -55,12 +55,12 @@ var (
 var address string
 var clusterRoleName string
 var roleBindingName string
-var groupList groupListFlag
+var namespaceGroupList namespaceGroupListFlag
 var fakeGroupResponse bool
 var kubeConfig string
 var inClusterConfig bool
 var configFilePath string
-var configSubject string
+var googleAdminEmail string
 var updateInterval time.Duration
 var logJSON bool
 
@@ -68,10 +68,10 @@ func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
 	flag.StringVar(&clusterRoleName, "cluster-role-name", "view", "The cluster role name with permissions.")
 	flag.StringVar(&roleBindingName, "rolebinding-name", "developer", "The role binding name per namespace.")
-	flag.Var(&groupList, "group-list", "The group list per namespace comma separated. May be used multiple times. e.g.: default:group1@test.com")
+	flag.Var(&namespaceGroupList, "namespace-group", "The google group and namespace colon separated. May be used multiple times. e.g.: default:group1@test.com")
 	flag.BoolVar(&fakeGroupResponse, "fake-group-response", false, "Fake Google Admin API Response. Always response with one group and one member: sync-fake-response@example.com.")
 	flag.StringVar(&configFilePath, "config-file-path", "", "The Path to the Service Account's Private Key file. see https://developers.google.com/admin-sdk/directory/v1/guides/delegation")
-	flag.StringVar(&configSubject, "config-subject", "", "The Config Subject Email. see https://developers.google.com/admin-sdk/directory/v1/guides/delegation")
+	flag.StringVar(&googleAdminEmail, "google-admin-email", "", "The Google Admin Email. see https://developers.google.com/admin-sdk/directory/v1/guides/delegation")
 	flag.BoolVar(&inClusterConfig, "in-cluster-config", true, "Use in cluster kubeconfig.")
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Absolute path to the kubeconfig file.")
 	flag.DurationVar(&updateInterval, "update-interval", time.Minute*15, "Update interval in seconds. e.g. 30s or 5m")
@@ -96,17 +96,17 @@ func main() {
 		flag.Usage()
 		log.Fatal("Missing -role-name")
 	}
-	if len(groupList) < 1 {
+	if len(namespaceGroupList) < 1 {
 		flag.Usage()
-		log.Fatal("Missing -group-list")
+		log.Fatal("Missing -namespace-group")
 	}
 	if configFilePath == "" {
 		flag.Usage()
 		log.Fatal("Missing -config-file-path")
 	}
-	if configSubject == "" {
+	if googleAdminEmail == "" {
 		flag.Usage()
-		log.Fatal("Missing -config-subject")
+		log.Fatal("Missing -google-admin-email")
 	}
 
 	stopChan := make(chan struct{}, 1)
@@ -146,8 +146,8 @@ func serveMetrics(address string) {
 
 // Gets group users and updates kubernetes rolebindings
 func updateRoles() {
-	service := getService(configFilePath, configSubject)
-	for _, element := range groupList {
+	service := getService(configFilePath, googleAdminEmail)
+	for _, element := range namespaceGroupList {
 		elementArray := strings.Split(element, ":")
 		namespace, email := elementArray[0], elementArray[1]
 
@@ -241,10 +241,10 @@ func updateRoles() {
 // the service accounts that act on behalf of the given user.
 // Args:
 //    configFilePath: The Path to the Service Account's Private Key file
-//    configSubject: The email of the user. Needs permissions to access the Admin APIs.
+//    googleAdminEmail: The email of the user. Needs permissions to access the Admin APIs.
 // Returns:
 //    Admin SDK directory service object.
-func getService(configFilePath string, configSubject string) *admin.Service {
+func getService(configFilePath string, googleAdminEmail string) *admin.Service {
 	if fakeGroupResponse {
 		return nil
 	}
@@ -266,7 +266,7 @@ func getService(configFilePath string, configSubject string) *admin.Service {
 		}).Error("Unable to parse client secret file to config.")
 		return nil
 	}
-	config.Subject = configSubject
+	config.Subject = googleAdminEmail
 	ctx := context.Background()
 	client := config.Client(ctx)
 
