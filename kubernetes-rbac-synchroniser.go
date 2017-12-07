@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -22,6 +23,17 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+type groupListFlag []string
+
+func (v *groupListFlag) Set(value string) error {
+	*v = append(*v, value)
+	return nil
+}
+
+func (v *groupListFlag) String() string {
+	return fmt.Sprint(*v)
+}
 
 var (
 	promSuccess = prometheus.NewCounterVec(
@@ -43,7 +55,7 @@ var (
 var address string
 var clusterRoleName string
 var roleBindingName string
-var groupList string
+var groupList groupListFlag
 var fakeGroupResponse bool
 var kubeConfig string
 var inClusterConfig bool
@@ -55,7 +67,7 @@ func main() {
 	flag.StringVar(&address, "listen-address", ":8080", "The address to listen on for HTTP requests.")
 	flag.StringVar(&clusterRoleName, "cluster-role-name", "view", "The cluster role name with permissions.")
 	flag.StringVar(&roleBindingName, "rolebinding-name", "developer", "The role binding name per namespace.")
-	flag.StringVar(&groupList, "group-list", "", "The group list per namespace comma separated. e.g.: default:group1@test.com,kube-system:group2@test.com")
+	flag.Var(&groupList, "group-list", "The group list per namespace comma separated. May be used multiple times. e.g.: default:group1@test.com")
 	flag.BoolVar(&fakeGroupResponse, "fake-group-response", false, "Fake Google Admin API Response. Always response with one group and one member: sync-fake-response@example.com.")
 	flag.StringVar(&configFilePath, "config-file-path", "", "The Path to the Service Account's Private Key file. see https://developers.google.com/admin-sdk/directory/v1/guides/delegation")
 	flag.StringVar(&configSubject, "config-subject", "", "The Config Subject Email. see https://developers.google.com/admin-sdk/directory/v1/guides/delegation")
@@ -76,7 +88,7 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	if groupList == "" {
+	if len(groupList) < 1 {
 		log.Println("Missing -group-list")
 		log.Println()
 		flag.Usage()
@@ -131,8 +143,7 @@ func serveMetrics(address string) {
 // Gets group users and updates kubernetes rolebindings
 func updateRoles() {
 	service := getService(configFilePath, configSubject)
-	groupListArray := strings.Split(groupList, ",")
-	for _, element := range groupListArray {
+	for _, element := range groupList {
 		elementArray := strings.Split(element, ":")
 		namespace, email := elementArray[0], elementArray[1]
 

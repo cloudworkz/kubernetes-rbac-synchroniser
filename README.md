@@ -21,18 +21,18 @@ RBAC Synchroniser pulls a Google Group, extracts Google Group Member Emails and 
 
 ### Flags
 
-| Flag                 | Description                                         | Defalut     |
-| :------------------- | :-------------------------------------------------- |:----------- |
-| -cluster-role-name   | The cluster role name with permissions.             | "view"      |
-| -config-file-path    | The Path to the Service Account's Private Key file. |             |
-| -config-subject      | The Config Subject Email.                           |             |
-| -fake-group-response | Fake Google Admin API Response.                     |             |
-| -group-list          | The group list per namespace comma separated.       |             |
-| -in-cluster-config   | Use in cluster kubeconfig.                          | true        |
-| -kubeconfig          | Absolute path to the kubeconfig file.               |             |
-| -listen-address      | The address to listen on for HTTP requests.         | ":8080"     |
-| -rolebinding-name    | The role binding name per namespace.                | "developer" |
-| -update-interval     | Update interval in seconds.                         | 15m0s       |
+| Flag                 | Description                                              | Defalut     |
+| :------------------- | :------------------------------------------------------- |:----------- |
+| -cluster-role-name   | The cluster role name with permissions.                  | "view"      |
+| -config-file-path    | The Path to the Service Account's Private Key file.      |             |
+| -config-subject      | The Config Subject Email.                                |             |
+| -fake-group-response | Fake Google Admin API Response.                          |             |
+| -group-list          | The group list per namespace. May be used multiple times.|             |
+| -in-cluster-config   | Use in cluster kubeconfig.                               | true        |
+| -kubeconfig          | Absolute path to the kubeconfig file.                    |             |
+| -listen-address      | The address to listen on for HTTP requests.              | ":8080"     |
+| -rolebinding-name    | The role binding name per namespace.                     | "developer" |
+| -update-interval     | Update interval in seconds.                              | 15m0s       |
 
 ### Prometheus metrics
 
