@@ -19,6 +19,7 @@ install:
 	@go get -u golang.org/x/oauth2/...
 	@go get -u google.golang.org/api/groupssettings/v1
 	@go get -u google.golang.org/api/admin/directory/v1
+	@go get -u github.com/sirupsen/logrus
 
 build:
 	@echo ">> building binaries"
