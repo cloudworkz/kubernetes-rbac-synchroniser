@@ -73,8 +73,8 @@ spec:
         - '-cluster-role-name=sync-test'
         - '-rolebinding-name=sync-test'
         - '-fake-group-response'
-        - '-group-list=default:sync-fake@test.com'
-        # - '-config-subject=admin@example.com'
+        - '-namespace-group=default:sync-fake@test.com'
+        # - '-google-admin-email=admin@example.com'
         # - '-config-file-path=/secrets/credentials.json'
         livenessProbe:
           httpGet:
