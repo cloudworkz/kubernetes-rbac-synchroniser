@@ -81,7 +81,8 @@ func main() {
 	if logJSON {
 		log.SetFormatter(&log.JSONFormatter{
 			FieldMap: log.FieldMap{
-				log.FieldKeyTime: "@timestamp",
+				log.FieldKeyTime:  "@timestamp",
+				log.FieldKeyLevel: "loglevel",
 			},
 		})
 	}
