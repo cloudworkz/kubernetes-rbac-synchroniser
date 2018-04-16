@@ -63,7 +63,7 @@ spec:
       serviceAccountName: rbac-synchroniser-account
       containers:
       - name: rbac-synchroniser
-        image: quay.io/yacut/kubernetes-rbac-synchroniser
+        image: quay.io/google-cloud-tools/kubernetes-rbac-synchroniser
         imagePullPolicy: Always
         # Sync the "sync-fake@example.com" Google Group
         # with the "sync-test" rolebinding and the "sync-test" cluster role
