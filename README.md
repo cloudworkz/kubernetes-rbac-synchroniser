@@ -8,6 +8,8 @@
 
 RBAC Synchroniser pulls a Google Group, extracts Google Group Member Emails and updates the Kubernetes RoleBinding in the given namespace.
 
+[![graph](https://raw.githubusercontent.com/google-cloud-tools/kubernetes-rbac-synchroniser/master/graph.png)](https://raw.githubusercontent.com/google-cloud-tools/kubernetes-rbac-synchroniser/master/graph.png)
+
 ### Requirements
 
 - The service account's private key file: **-config-file-path** flag
